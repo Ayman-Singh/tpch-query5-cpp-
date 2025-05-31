@@ -1,0 +1,3 @@
+/home/aymansingh/tpch-query5/build/CMakeFiles/tpch_query5.dir
+/home/aymansingh/tpch-query5/build/CMakeFiles/edit_cache.dir
+/home/aymansingh/tpch-query5/build/CMakeFiles/rebuild_cache.dir
