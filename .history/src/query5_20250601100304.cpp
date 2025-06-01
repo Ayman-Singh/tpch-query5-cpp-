@@ -117,8 +117,8 @@ vector<string> tokens;
 while (getline(ss, token, '|')) {
   tokens.push_back(token);
 }
-
-if (tokens.size() >= 2) {  // cuz region has atleast 2 tokens
+// region has at least 2 tokens: [0]=r_regionkey,[1]=r_name
+if (tokens.size() >= 2) {
   map<string, string> row;
   row["r_regionkey"] = tokens[0];
   row["r_name"]      = tokens[1];
@@ -143,7 +143,7 @@ vector<string> tokens;
 while (getline(ss, token, '|')) {
   tokens.push_back(token);
 }
-// nation has at least 3 tokens
+// nation has at least 3 tokens: [0]=n_nationkey, [1]=n_name, [2]=n_regionkey
 if (tokens.size() >= 3) {
   map<string, string> row;
   row["n_nationkey"]  = tokens[0];
@@ -170,7 +170,7 @@ vector<string> tokens;
 while (getline(ss, token, '|')) {
   tokens.push_back(token);
 }
-//Atleast 4 tokens
+// supplier has at least 4 tokens: [0]=s_suppkey, [3]=s_nationkey
 if (tokens.size() >= 4) {
   map<string, string> row;
   row["s_suppkey"]   = tokens[0];
@@ -196,7 +196,7 @@ vector<string> tokens;
 while (getline(ss, token, '|')) {
   tokens.push_back(token);
 }
-// customer has at least 4 tokens
+// customer has at least 4 tokens: [0]=c_custkey, [3]=c_nationkey
 if (tokens.size() >= 4) {
   map<string, string> row;
   row["c_custkey"]   = tokens[0];
@@ -222,7 +222,7 @@ vector<string> tokens;
 while (getline(ss, token, '|')) {
   tokens.push_back(token);
 }
-
+// orders has at least 5 tokens: [0]=o_orderkey, [1]=o_custkey, [4]=o_orderdate
 if (tokens.size() >= 5) {
   map<string, string> row;
   row["o_orderkey"]  = tokens[0];

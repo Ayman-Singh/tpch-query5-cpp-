@@ -85,186 +85,83 @@ for (int i=1;i<argc;i++){
     // Example: --r_name ASIA --start_date 1994-01-01 --end_date 1995-01-01 --threads 4 --table_path /path/to/tables --result_path /path/to/results
     return true;
 }
-bool readTPCHData(const string& table_path,
-    vector<map<string, string>>& customer_data,
-    vector<map<string, string>>& orders_data,
-    vector<map<string, string>>& lineitem_data,
-    vector<map<string, string>>& supplier_data,
-    vector<map<string, string>>& nation_data,
-    vector<map<string, string>>& region_data)
+
+vector<vector<string>> readTable(const string& filepath) {
+    vector<vector<string>> data;
+    ifstream file(filepath);
+    if (!file) return data;
+
+    string line;
+    while (getline(file, line)) {
+        vector<string> row;
+        stringstream ss(line);
+        string field;
+        while (getline(ss, field, '|')) {
+            row.push_back(field);
+        }
+        data.push_back(row);
+    }
+    return data;
+}
+
+// Converts a vector-of-vectors into a vector-of-maps, given a list of column names.
+// Any empty string in `cols` is treated as “ignore this column.”
+bool populateMapRows(const vector<vector<string>>& raw,
+                     vector<map<string,string>>& out,
+                     const vector<string>& cols)
 {
-// Build full file paths
-string region_file   = table_path + "/region.tbl";
-string nation_file   = table_path + "/nation.tbl";
-string supplier_file = table_path + "/supplier.tbl";
-string customer_file = table_path + "/customer.tbl";
-string orders_file   = table_path + "/orders.tbl";
-string lineitem_file = table_path + "/lineitem.tbl";
+    if (raw.empty()) return false;
+    for (auto& vec : raw) {
+        map<string,string> row;
+        for (size_t i = 0; i < cols.size() && i < vec.size(); ++i) {
+            if (!cols[i].empty()) {
+                row[cols[i]] = vec[i];
+            }
+        }
+        out.push_back(row);
+    }
+    return true;
+}
 
-// For region table
-
+// readTPCHData that uses readTable + populateMapRows
+bool readTPCHData(const string& table_path, vector<map<string,string>>& customer_data, vector<map<string,string>>& orders_data,
+                  vector<map<string,string>>& lineitem_data,
+                  vector<map<string,string>>& supplier_data,
+                  vector<map<string,string>>& nation_data,
+                  vector<map<string,string>>& region_data)
 {
-ifstream in(region_file);
-if (!in.is_open()) {
-cerr << "Cannot open " << region_file << "\n";
-return false;
-}
-string line;
-while (getline(in, line)) {
-stringstream ss(line);
-string token;
-vector<string> tokens;
-while (getline(ss, token, '|')) {
-  tokens.push_back(token);
+    // 1) region.tbl → columns [r_regionkey, r_name]
+    auto rawRegion = readTable(table_path + "/region.tbl");
+    if (!populateMapRows(rawRegion, region_data, {"r_regionkey","r_name"})) return false;
+
+    // 2) nation.tbl → columns [n_nationkey, n_name, n_regionkey]
+    auto rawNation = readTable(table_path + "/nation.tbl");
+    if (!populateMapRows(rawNation, nation_data, {"n_nationkey","n_name","n_regionkey"})) return false;
+
+    // 3) supplier.tbl → cols [s_suppkey, −,−, s_nationkey] (only idx 0 and 3 matter)
+    auto rawSupplier = readTable(table_path + "/supplier.tbl");
+    if (!populateMapRows(rawSupplier, supplier_data, {"s_suppkey","","","s_nationkey"})) return false;
+
+    // 4) customer.tbl → cols [c_custkey, −,−, c_nationkey]
+    auto rawCustomer = readTable(table_path + "/customer.tbl");
+    if (!populateMapRows(rawCustomer, customer_data, {"c_custkey","","","c_nationkey"})) return false;
+
+    // 5) orders.tbl → cols [o_orderkey, o_custkey, −, −, o_orderdate]
+    auto rawOrders = readTable(table_path + "/orders.tbl");
+    if (!populateMapRows(rawOrders, orders_data, {"o_orderkey","o_custkey","","","o_orderdate"})) return false;
+
+    // 6) lineitem.tbl → cols [l_orderkey, −, l_suppkey, −, −, l_extendedprice, l_discount]
+    auto rawLineitem = readTable(table_path + "/lineitem.tbl");
+    if (!populateMapRows(rawLineitem, lineitem_data,
+                         {"l_orderkey","","l_suppkey","","","l_extendedprice","l_discount"}))
+    {
+        return false;
+    }
+
+    return true;
 }
 
-if (tokens.size() >= 2) {  // cuz region has atleast 2 tokens
-  map<string, string> row;
-  row["r_regionkey"] = tokens[0];
-  row["r_name"]      = tokens[1];
-  region_data.push_back(row);
-}
-}
-in.close();
-}
 
-// For nation table
-{
-ifstream in(nation_file);
-if (!in.is_open()) {
-cerr << "Cannot open " << nation_file << "\n";
-return false;
-}
-string line;
-while (getline(in, line)) {
-stringstream ss(line);
-string token;
-vector<string> tokens;
-while (getline(ss, token, '|')) {
-  tokens.push_back(token);
-}
-// nation has at least 3 tokens
-if (tokens.size() >= 3) {
-  map<string, string> row;
-  row["n_nationkey"]  = tokens[0];
-  row["n_name"]       = tokens[1];
-  row["n_regionkey"]  = tokens[2];
-  nation_data.push_back(row);
-}
-}
-in.close();
-}
-
-// for supplier table
-{
-ifstream in(supplier_file);
-if (!in.is_open()) {
-cerr << "Cannot open " << supplier_file << "\n";
-return false;
-}
-string line;
-while (getline(in, line)) {
-stringstream ss(line);
-string token;
-vector<string> tokens;
-while (getline(ss, token, '|')) {
-  tokens.push_back(token);
-}
-//Atleast 4 tokens
-if (tokens.size() >= 4) {
-  map<string, string> row;
-  row["s_suppkey"]   = tokens[0];
-  row["s_nationkey"] = tokens[3];
-  supplier_data.push_back(row);
-}
-}
-in.close();
-}
-
-// for customer tble
-{
-ifstream in(customer_file);
-if (!in.is_open()) {
-cerr << "Cannot open " << customer_file << "\n";
-return false;
-}
-string line;
-while (getline(in, line)) {
-stringstream ss(line);
-string token;
-vector<string> tokens;
-while (getline(ss, token, '|')) {
-  tokens.push_back(token);
-}
-// customer has at least 4 tokens
-if (tokens.size() >= 4) {
-  map<string, string> row;
-  row["c_custkey"]   = tokens[0];
-  row["c_nationkey"] = tokens[3];
-  customer_data.push_back(row);
-}
-}
-in.close();
-}
-
-// For orders table
-{
-ifstream in(orders_file);
-if (!in.is_open()) {
-cerr << "Cannot open " << orders_file << "\n";
-return false;
-}
-string line;
-while (getline(in, line)) {
-stringstream ss(line);
-string token;
-vector<string> tokens;
-while (getline(ss, token, '|')) {
-  tokens.push_back(token);
-}
-
-if (tokens.size() >= 5) {
-  map<string, string> row;
-  row["o_orderkey"]  = tokens[0];
-  row["o_custkey"]   = tokens[1];
-  row["o_orderdate"] = tokens[4];
-  orders_data.push_back(row);
-}
-}
-in.close();
-}
-
-// lineitem table
-{
-ifstream in(lineitem_file);
-if (!in.is_open()) {
-cerr << "Cannot open " << lineitem_file << "\n";
-return false;
-}
-string line;
-while (getline(in, line)) {
-stringstream ss(line);
-string token;
-vector<string> tokens;
-while (getline(ss, token, '|')) {
-  tokens.push_back(token);
-}
-// lineitem has at least 7 tokens:
-// [0]=l_orderkey, [2]=l_suppkey, [5]=l_extendeprice, [6]=l_discount
-if (tokens.size() >= 7) {
-  map<string, string> row;
-  row["l_orderkey"]      = tokens[0];
-  row["l_suppkey"]       = tokens[2];
-  row["l_extendedprice"] = tokens[5];
-  row["l_discount"]      = tokens[6];
-  lineitem_data.push_back(row);
-}
-}
-in.close();
-}
-
-return true;
-}
 // Function to execute TPCH Query 5 using multithreading
 bool executeQuery5(const string& r_name, const string& start_date, const string& end_date, int num_threads, const vector<map<string, string>>& customer_data, const vector<map<string, string>>& orders_data, const vector<map<string,string>>& lineitem_data, const vector<map<string, string>>& supplier_data, const vector<map<string,string>>& nation_data, const vector<map<string,string>>& region_data, map<string, double>& results) {
     int targetRegionKey = -1;
@@ -310,7 +207,7 @@ bool executeQuery5(const string& r_name, const string& start_date, const string&
         return false;
     }
 
-    // Filter customers whose c_nationkey is in region
+    // 4) Filter customers whose c_nationkey is in our region
     unordered_map<int,int> customerNation; // c_custkey → c_nationkey
     for (auto &row : customer_data) {
         int ckey = stoi(row.at("c_custkey"));
@@ -324,7 +221,7 @@ bool executeQuery5(const string& r_name, const string& start_date, const string&
         return false;
     }
 
-    // keep only those whose customer is in our region and date in [start,end)
+    // 5) Filter orders: keep only those whose customer is in our region and date in [start,end)
     unordered_map<int,int> orderCustKey; // o_orderkey → o_custkey
     for (auto &row : orders_data) {
         int okey = stoi(row.at("o_orderkey"));
@@ -342,7 +239,7 @@ bool executeQuery5(const string& r_name, const string& start_date, const string&
         return false;
     }
 
-    //scan lineitem_data in parallel, accumulating rev/nation
+    // 6) Scan lineitem_data in parallel, accumulating rev/nation
     unordered_map<string,double> sharedRevenue;
     mutex mtx;
 
@@ -392,7 +289,7 @@ bool executeQuery5(const string& r_name, const string& start_date, const string&
         th.join();
     }
 
-    //Copy sharedRevenue into the final results map (sorted by nation name)
+    // 7) Copy sharedRevenue into the final results map (sorted by nation name)
     for (auto &kv : sharedRevenue) {
         results[kv.first] = kv.second;
     }

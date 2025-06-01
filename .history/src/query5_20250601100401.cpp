@@ -196,7 +196,7 @@ vector<string> tokens;
 while (getline(ss, token, '|')) {
   tokens.push_back(token);
 }
-// customer has at least 4 tokens
+// customer has at least 4 tokens: [0]=c_custkey, [3]=c_nationkey
 if (tokens.size() >= 4) {
   map<string, string> row;
   row["c_custkey"]   = tokens[0];
@@ -222,7 +222,7 @@ vector<string> tokens;
 while (getline(ss, token, '|')) {
   tokens.push_back(token);
 }
-
+// orders has at least 5 tokens: [0]=o_orderkey, [1]=o_custkey, [4]=o_orderdate
 if (tokens.size() >= 5) {
   map<string, string> row;
   row["o_orderkey"]  = tokens[0];
